@@ -6,23 +6,23 @@ A modern web application built with Laravel and Vue.js that streamlines the proc
 
 ## Features
 
-- 👥 **User Role Management**
+👥 **User Role Management**
   - Admin and Employee role separation
   - Role-based access control
   - Secure authentication system
 
-- 📝 **Leave Management**
+📝 **Leave Management**
   - Multiple leave types (Sick, Vacation, Personal, Emergency, etc.)
   - Date range selection
   - Reason documentation
   - Status tracking (Pending, Approved, Rejected)
 
-- 📧 **Notifications**
+📧 **Notifications**
   - Email notifications for leave status updates
   - Real-time status changes
   - Admin remarks support
 
-- 📊 **Dashboard**
+📊 **Dashboard**
   - Overview of leave statistics
   - Status-wise leave counts
   - Comprehensive leave history
