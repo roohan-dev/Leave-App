@@ -4,7 +4,9 @@ A modern web application built with Laravel and Vue.js that streamlines the proc
 
 ![Leave Management System](127.0.0.1_8000_.png)
 
-![Leave Management System](127.0.0.1_8000_ (1).png)
+![Leave Management System](127.0.0.1_80022.png)
+
+![Leave Management System](127.0.0.1_80.png)
 
 
 ## Features
