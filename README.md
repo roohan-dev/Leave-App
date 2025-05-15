@@ -34,7 +34,7 @@ A modern web application built with Laravel and Vue.js that streamlines the proc
 
 ## Tech Stack
 
-- **Backend:** Laravel 10.x
+- **Backend:** Laravel 12
 - **Frontend:** Vue.js 3, Inertia.js
 - **Styling:** Tailwind CSS
 - **Database:** MySQL
