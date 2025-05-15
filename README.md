@@ -2,7 +2,7 @@
 
 A modern web application built with Laravel and Vue.js that streamlines the process of managing employee leave requests. This system provides an efficient way to handle leave applications, approvals, and notifications.
 
-![Leave Management System](public/images/lms-systemlogo.png)
+![Leave Management System](127.0.0.1_8000_.png)
 
 ## Features
 
