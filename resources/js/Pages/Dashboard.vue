@@ -103,7 +103,7 @@ const flash = computed(() => page.props.flash)
 
         <template #header>
             <h2 class="text-xl font-semibold leading-tight text-gray-800">
-                Leave Management Dashboards
+                Leave Management Dashboardsss
             </h2>
         </template>
 
