@@ -83,8 +83,8 @@ class LeaveController extends Controller
     {
         try {
             $this->authorize('create', LeaveRequest::class);
-            
-            return $this->inertiaRender('Leave/Create', [
+
+            return $this->inertiaRender('Leave/Index', [
                 'leaveTypes' => [
                     'sick' => 'Sick Leave',
                     'vacation' => 'Vacation',
@@ -114,6 +114,7 @@ class LeaveController extends Controller
             }
 
             $leaveRequest = $this->leaveService->store($validated, $request->user());
+
 
             return $this->success(
                 ['leave' => $leaveRequest],
@@ -201,21 +202,46 @@ class LeaveController extends Controller
     /**
      * Remove the specified leave request.
      */
-    public function destroy(LeaveRequest $leaveRequest)
+    public function destroy(Request $request, $id)
     {
         try {
-            $this->authorize('delete', $leaveRequest);
+            $user = auth()->user();
             
-            // Delete associated documents if any
-            if ($leaveRequest->documents) {
-                Storage::disk('public')->delete($leaveRequest->documents);
+            // Add detailed logging
+            Log::info('Attempting leave request deletion', [
+                'user_id' => $user->id,
+                'is_admin' => $user->hasRole('admin'),
+                'roles' => $user->getRoleNames(),
+                'leave_id' => $id
+            ]);
+
+            $leaveRequest = LeaveRequest::findOrFail($id);
+            
+            // Add explicit admin check
+            if (!$user->hasRole('admin') && $leaveRequest->user_id !== $user->id) {
+                Log::warning('Unauthorized user attempted to delete leave request', [
+                    'user_id' => $user->id,
+                    'leave_id' => $id
+                ]);
+                throw new \Illuminate\Auth\Access\AuthorizationException('You are not authorized to delete this leave request.');
             }
             
             $leaveRequest->delete();
 
-            return $this->success([], 'Leave request deleted successfully.');
+            // Return redirect with success flash message
+            return redirect()->route('dashboard')->with([
+                'success' => true,
+                'message' => 'Leave request deleted successfully'
+            ]);
+
         } catch (\Exception $e) {
-            return $this->error('Failed to delete leave request.');
+            Log::error('Error deleting leave request: ' . $e->getMessage());
+            
+            // Return redirect with error flash message
+            return redirect()->back()->with([
+                'error' => true,
+                'message' => 'Error deleting leave request.'
+            ]);
         }
     }
 

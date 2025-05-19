@@ -36,7 +36,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('store');
         Route::get('/create', [LeaveController::class, 'create'])
             ->name('create');
-        
+        Route::delete('/{id}', [LeaveController::class, 'destroy'])
+            ->name('destroy');
+
         Route::middleware(['role:admin'])->group(function () {
             Route::put('/{id}/status', [LeaveController::class, 'updateStatus'])
                 ->name('update-status');
