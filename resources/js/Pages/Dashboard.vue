@@ -54,15 +54,93 @@ const endDateFilter = ref('');
 const showFilterModal = ref(false);
 // Add new ref for edit modal
 const showEditModal = ref(false);
-// Add computed property for filtered leaves
+// Add new ref for search query
+const searchQuery = ref('');
+// Change the default sort column and direction
+const sortColumn = ref('status'); // Changed from 'user.name' to 'status'
+const sortDirection = ref('asc'); // Default sort direction
+
+// Add status priority mapping
+const statusPriority = {
+    'pending': 1,
+    'approved': 2,
+    'rejected': 3
+};
+
+// Add sorting function
+const toggleSort = (column) => {
+    if (sortColumn.value === column) {
+        // If clicking the same column, toggle direction
+        sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
+    } else {
+        // If clicking a new column, set it with ascending direction
+        sortColumn.value = column;
+        sortDirection.value = 'asc';
+    }
+};
+
+// Update your filteredLeaves computed property to include sorting
 const filteredLeaves = computed(() => {
-    if (!startDateFilter.value && !endDateFilter.value) return props.leaves;
+    let leaves = props.leaves;
     
-    return props.leaves.filter(leave => {
+    // Apply search if query exists
+    if (searchQuery.value) {
+        const query = searchQuery.value.toLowerCase();
+        leaves = leaves.filter(leave => 
+            leave.user.name.toLowerCase().includes(query) ||    // Search by employee name
+            getLeaveTypeLabel(leave.type).toLowerCase().includes(query) || // Search by leave type
+            leave.status.toLowerCase().includes(query)          // Search by status
+        );
+    }
+    
+    // Apply sorting
+    leaves = [...leaves].sort((a, b) => {
+        let aValue, bValue;
+        
+        if (sortColumn.value === 'status') {
+            // Use status priority for sorting
+            aValue = statusPriority[a.status] || 999;
+            bValue = statusPriority[b.status] || 999;
+        } else if (sortColumn.value === 'days') {
+            // Calculate days for comparison
+            aValue = calculateDays(a.start_date, a.end_date);
+            bValue = calculateDays(b.start_date, b.end_date);
+        } else if (sortColumn.value.includes('.')) {
+            const [parent, child] = sortColumn.value.split('.');
+            aValue = a[parent][child];
+            bValue = b[parent][child];
+        } else {
+            aValue = a[sortColumn.value];
+            bValue = b[sortColumn.value];
+        }
+
+        // Handle special cases like dates
+        if (sortColumn.value === 'start_date' || sortColumn.value === 'end_date') {
+            aValue = new Date(aValue);
+            bValue = new Date(bValue);
+        }
+
+        // For numerical values (like days and status priority)
+        if (sortColumn.value === 'days' || sortColumn.value === 'status') {
+            return sortDirection.value === 'asc' ? aValue - bValue : bValue - aValue;
+        }
+
+        // For other values, use string comparison
+        if (sortDirection.value === 'asc') {
+            return aValue > bValue ? 1 : -1;
+        }
+        return aValue < bValue ? 1 : -1;
+    });
+
+    // Apply existing date filters
+    if (!startDateFilter.value && !endDateFilter.value) return leaves;
+    
+    return leaves.filter(leave => {
         const leaveStart = new Date(leave.start_date);
         const leaveEnd = new Date(leave.end_date);
         const filterStart = startDateFilter.value ? new Date(startDateFilter.value) : null;
         const filterEnd = endDateFilter.value ? new Date(endDateFilter.value) : null;
+
         if (filterStart && filterEnd) {
             return leaveStart >= filterStart && leaveEnd <= filterEnd;
         } else if (filterStart) {
@@ -217,51 +295,73 @@ const confirmDelete = (leave) => {
                         </div>
                     </div>
                 </div>
-                <!-- Filter Section -->
-                <div class="mt-8 mb-4 flex justify-end relative">
-                    <button 
-                        @click="showFilterModal = !showFilterModal"
-                        class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd" />
-                        </svg>
-                        Filter
-                    </button>
-                    <!-- Filter Modal -->
-                    <div v-if="showFilterModal" class="absolute z-10 mt-10 right-0 bg-white rounded-md shadow-lg p-4 w-96">
-                        <div class="space-y-4">
-                            <div>
-                                <label for="startDate" class="block text-sm font-medium text-gray-700">Start Date</label>
-                                <input
-                                    type="date"
-                                    id="startDate"
-                                    v-model="startDateFilter"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                                >
+                <!-- Filter and Search Div -->
+                <div class="mt-8 mb-4 flex justify-between items-center">
+                    <!-- Search Section -->
+                    <div class="max-w-xs">
+                        <div class="relative rounded-md shadow-sm">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                                </svg>
                             </div>
-                            <div>
-                                <label for="endDate" class="block text-sm font-medium text-gray-700">End Date</label>
-                                <input
-                                    type="date"
-                                    id="endDate"
-                                    v-model="endDateFilter"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                                >
-                            </div>
-                            <div class="flex justify-between">
-                                <button
-                                    @click="clearFilters"
-                                    class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                                >
-                                    Clear
-                                </button>
-                                <button
-                                    @click="applyFilters"
-                                    class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                                >
-                                    Add a Filter
-                                </button>
+                            <input
+                                id="search"
+                                v-model="searchQuery"
+                                type="search"
+                                class="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 pr-3 py-2 sm:text-sm border-gray-300 rounded-md"
+                                placeholder="Search..."
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Filter Button -->
+                    <div class="relative">
+                        <button 
+                            @click="showFilterModal = !showFilterModal"
+                            class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" 
+                            class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                            </svg>
+                            Filter
+                        </button>
+                        <!-- Filter Modal -->
+                        <div v-if="showFilterModal" class="absolute z-10 mt-2 right-0 bg-white rounded-md shadow-lg p-4 w-96">
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="startDate" class="block text-sm font-medium text-gray-700">Start Date</label>
+                                    <input
+                                        type="date"
+                                        id="startDate"
+                                        v-model="startDateFilter"
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                    >
+                                </div>
+                                <div>
+                                    <label for="endDate" class="block text-sm font-medium text-gray-700">End Date</label>
+                                    <input
+                                        type="date"
+                                        id="endDate"
+                                        v-model="endDateFilter"
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                    >
+                                </div>
+                                <div class="flex justify-between">
+                                    <button
+                                        @click="clearFilters"
+                                        class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                    >
+                                        Clear
+                                    </button>
+                                    <button
+                                        @click="applyFilters"
+                                        class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                    >
+                                        Add a Filter
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -273,20 +373,50 @@ const confirmDelete = (leave) => {
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
-                                        <th class="px-6 py-3 text-left text-xs text-gray-500 uppercase tracking-wider">
+                                        <th 
+                                            @click="toggleSort('user.name')"
+                                            class="px-6 py-3 text-left text-xs text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                        >
                                             Employee
+                                            <span v-if="sortColumn === 'user.name'" class="ml-1">
+                                                {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                                            </span>
                                         </th>
-                                        <th class="px-6 py-3 text-left text-xs text-gray-500 uppercase tracking-wider">
+                                        <th 
+                                            @click="toggleSort('start_date')"
+                                            class="px-6 py-3 text-left text-xs text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                        >
                                             Duration
+                                            <span v-if="sortColumn === 'start_date'" class="ml-1">
+                                                {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                                            </span>
                                         </th>
-                                        <th class="px-6 py-3 text-left text-xs text-gray-500 uppercase tracking-wider">
+                                        <th 
+                                            @click="toggleSort('type')"
+                                            class="px-6 py-3 text-left text-xs text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                        >
                                             Type
+                                            <span v-if="sortColumn === 'type'" class="ml-1">
+                                                {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                                            </span>
                                         </th>
-                                        <th class="px-6 py-3 text-center text-xs text-gray-500 uppercase tracking-wider">
+                                        <th 
+                                            @click="toggleSort('days')"
+                                            class="px-6 py-3 text-center text-xs text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                        >
                                             No. of Days
+                                            <span v-if="sortColumn === 'days'" class="ml-1">
+                                                {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                                            </span>
                                         </th>
-                                        <th class="px-6 py-3 text-center text-xs text-gray-500 uppercase tracking-wider">
+                                        <th 
+                                            @click="toggleSort('status')"
+                                            class="px-6 py-3 text-center text-xs text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                        >
                                             Status
+                                            <span v-if="sortColumn === 'status'" class="ml-1">
+                                                {{ sortDirection === 'asc' ? '↑' : '↓' }}
+                                            </span>
                                         </th>
                                         <th class="px-6 py-3 text-center text-xs text-gray-500 uppercase tracking-wider">
                                             Reason
@@ -393,7 +523,7 @@ const confirmDelete = (leave) => {
                         </div>
                     </div>
                 </transition>
-                <!-- New Edit Modal -->
+                <!-- Edit Modal -->
                 <transition name="modal">
                     <div v-if="showEditModal" class="fixed inset-0 z-50 overflow-y-auto">
                         <div class="flex items-center justify-center min-h-screen">
@@ -418,7 +548,6 @@ const confirmDelete = (leave) => {
                                         Reject
                                     </button>
                                 </div>
-
                                 <div class="flex justify-end">
                                     <button
                                         @click="showEditModal = false"
